@@ -1,11 +1,36 @@
 const tought = require('../models/tought')
 const user = require('../models/user')
 
+const { Op } = require('sequelize')
+
 module.exports = class toughtController {
     static async showAll(req, res) {
-        const Toughts = await tought.findAll({include: user})
+        let search = ''
+
+        if (req.query.search) {
+            search = req.query.search
+        }
+
+        let order = 'DESC'
+
+        if (req.query.order === 'old') {
+            order = 'ASC'
+        } else {
+            order = 'DESC'
+        }
+
+        const Toughts = await tought.findAll({
+            include: user,
+            where: {
+                title: {[Op.like]: `%${search}%`}
+            },
+            order: [['createdAt', order]],
+        })
         const toughts = Toughts.map((result) => result.get({plain: true}))
-        res.render('home', {toughts})
+
+        let toughtsLength = toughts.length
+
+        res.render('home', {toughts, search, toughtsLength})
     }
     static async dashboard(req, res) {
         const userid = req.session.userid
