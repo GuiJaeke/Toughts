@@ -3,25 +3,52 @@ const user = require('../models/user')
 
 module.exports = class toughtController {
     static async showAll(req, res) {
-        res.render('home')
+        const Toughts = await tought.findAll({include: user})
+        const toughts = Toughts.map((result) => result.get({plain: true}))
+        res.render('home', {toughts})
     }
     static async dashboard(req, res) {
         const userid = req.session.userid
-        const User = await user.findOne({where: {id: userid}, include: tought, plain: true})
-        console.log(User);
-        
+        const User = await user.findOne({ where: { id: userid }, include: tought, plain: true })
+
         if (!User) {
             res.redirect('/login')
         }
 
         const toughts = User.toughts.map((result) => result.dataValues)
-        console.log(toughts);
-        
-        res.render('dashboard', { toughts: toughts })
+        let emptyToughts = false
+
+        if (toughts.length == 0) {
+            emptyToughts = true
+        }
+
+        res.render('dashboard', { toughts: toughts, emptyToughts })
     }
     static async createTought(req, res) {
 
         res.render('create')
+    }
+    static async editTought(req, res) {
+        const id = req.params.id
+
+        const Tought = await tought.findOne({ where: { id: id }, plain: true })
+        res.render('edit', { Tought })
+    }
+    static async editToughtPost(req, res) {
+        const id = req.body.id
+        const title = req.body.title
+
+        const Tought = {
+            title
+        }
+        try {
+            await tought.update(Tought, { where: { id: id } })
+            req.flash('message', 'Pensamento atualizado com sucesso!')
+            res.redirect('/toughts/dashboard')
+        } catch (err) {
+            console.log(err);
+
+        }
     }
     static async createToughtPost(req, res) {
 
@@ -42,4 +69,14 @@ module.exports = class toughtController {
         }
     }
 
+    static async remove(req, res) {
+        const id = req.body.id
+        const userId = req.session.userid
+        try {
+            await tought.destroy({ where: { id: id, userid: userId } })
+            res.redirect('/toughts/dashboard')
+        } catch (err) {
+            console.log(err);
+        }
+    }
 }
